@@ -32,103 +32,108 @@ interface TunnelData {
 
 class Lokal {
 	private baseURL: string;
-    private basicAuth: { username: string; password: string } | null;
-    private token: string | null;
-    private debug: boolean;
+	private basicAuth: { username: string; password: string } | null;
+	private token: string | null;
+	private debug: boolean;
 
-    constructor(baseURL: string = 'http://127.0.0.1:6174') {
-        this.baseURL = baseURL;
-        this.basicAuth = null;
-        this.token = null;
-        this.debug = false;
-    }
+	constructor(baseURL: string = 'http://127.0.0.1:6174') {
+		this.baseURL = baseURL;
+		this.basicAuth = null;
+		this.token = null;
+		this.debug = false;
+	}
 
-    setBaseURL(url: string): Lokal {
-        this.baseURL = url;
-        this.logDebug('Base URL set to:', url);
-        return this;
-    }
+	setBaseURL(url: string): Lokal {
+		this.baseURL = url;
+		this.logDebug('Base URL set to:', url);
+		return this;
+	}
 
-    setBasicAuth(username: string, password: string): Lokal {
-        this.basicAuth = { username, password };
-        this.logDebug('Basic auth set');
-        return this;
-    }
+	setBasicAuth(username: string, password: string): Lokal {
+		this.basicAuth = { username, password };
+		this.logDebug('Basic auth set');
+		return this;
+	}
 
-    setAPIToken(token: string): Lokal {
-        this.token = token;
-        this.logDebug('API token set');
-        return this;
-    }
+	skipTLSVerify(): Lokal {
+		process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+		return this;
+	}
 
-    debugMode(enable: boolean): Lokal {
-        this.debug = enable;
-        this.logDebug(`Debug mode ${enable ? 'enabled' : 'disabled'}`);
-        return this;
-    }
+	setAPIToken(token: string): Lokal {
+		this.token = token;
+		this.logDebug('API token set');
+		return this;
+	}
 
-    private logDebug(...args: any[]): void {
-        if (this.debug) {
-            console.log(clc.yellow('[DEBUG]'), ...args);
-        }
-    }
+	debugMode(enable: boolean): Lokal {
+		this.debug = enable;
+		this.logDebug(`Debug mode ${enable ? 'enabled' : 'disabled'}`);
+		return this;
+	}
 
-    async request(endpoint: string, method: string = 'GET', body: any = null): Promise<any> {
-        const headers: HeadersInit = {
-            'User-Agent': 'Lokal TS - github.com/lokal-so/lokal-ts',
-            'Content-Type': 'application/json'
-        };
+	private logDebug(...args: any[]): void {
+		if (this.debug) {
+			console.log(clc.yellow('[DEBUG]'), ...args);
+		}
+	}
 
-        if (this.token) {
-            headers['X-Auth-Token'] = this.token;
-        }
+	async request(endpoint: string, method: string = 'GET', body: any = null): Promise<any> {
+		const headers: HeadersInit = {
+			'User-Agent': 'Lokal TS - github.com/lokal-so/lokal-ts',
+			'Content-Type': 'application/json'
+		};
 
-        const options: RequestInit = {
-            method,
-            headers
-        };
+		if (this.token) {
+			headers['X-Auth-Token'] = this.token;
+		}
 
-        if (this.basicAuth) {
-            const auth = btoa(`${this.basicAuth.username}:${this.basicAuth.password}`);
-            headers['Authorization'] = `Basic ${auth}`;
-        }
+		const options: RequestInit = {
+			method,
+			headers
+		};
 
-        if (body) {
-            options.body = JSON.stringify(body);
-        }
+		if (this.basicAuth) {
+			const auth = btoa(`${this.basicAuth.username}:${this.basicAuth.password}`);
+			headers['Authorization'] = `Basic ${auth}`;
+		}
 
-        this.logDebug('Request:', { endpoint, method, headers, body });
+		if (body) {
+			options.body = JSON.stringify(body);
+		}
 
-        let response;
-        try {
-            response = await fetch(`${this.baseURL}${endpoint}`, options);
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                console.error(
-                    'No Lokal client running, you may need to install Lokal Client, download at https://lokal.so/download',
-                    error.message
-                );
-            }
-            this.logDebug('Request failed:', error);
-            return;
-        }
+		this.logDebug('Request:', { endpoint, method, headers, body });
 
-        const serverVersion = response.headers.get('Lokal-Server-Version');
-        this.logDebug('Server version:', serverVersion);
+		let response;
+		try {
+			response = await fetch(`${this.baseURL}${endpoint}`, options);
+		} catch (error: unknown) {
+			if (error instanceof Error) {
+				console.error(
+					'No Lokal client running, you may need to install Lokal Client, download at https://lokal.so/download',
+					error.message
+				);
+			}
+			this.logDebug('Request failed:', error);
+			return;
+		}
 
-        if (!serverVersion || !this.isValidVersion(serverVersion)) {
-            throw new Error('Your local client might be outdated, please update');
-        }
+		const serverVersion = response.headers.get('Lokal-Server-Version');
+		this.logDebug('Server version:', serverVersion);
 
-        const data = await response.json();
-        this.logDebug('Response:', data);
+		if (!serverVersion || !this.isValidVersion(serverVersion)) {
+			throw new Error('Your local client might be outdated, please update');
+		}
 
-        if (!response.ok) {
-            throw new Error(data.message || 'An error occurred');
-        }
+		const data = await response.json();
+		this.logDebug('Response:', data);
 
-        return data;
-    }
+		if (!response.ok) {
+			throw new Error(data.message || 'An error occurred');
+		}
+
+		return data;
+	}
 
 	private isValidVersion(version: string): boolean {
 		const [major, minor, patch] = version.split('.').map(Number);
