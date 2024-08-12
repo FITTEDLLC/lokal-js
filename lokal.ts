@@ -46,7 +46,7 @@ class Lokal {
 	}
 
 	setBaseURL(url: string): Lokal {
-		if (url.endsWith("/")) {
+		if (url.endsWith('/')) {
 			url = url.slice(0, -1);
 		}
 		this.baseURL = url;
@@ -84,7 +84,7 @@ class Lokal {
 		return this;
 	}
 
-	private logDebug(...args: any[]): void {
+	logDebug(...args: any[]): void {
 		if (this.debug) {
 			console.log(clc.yellow('[DEBUG]'), ...args);
 		}
@@ -239,8 +239,12 @@ class Tunnel implements TunnelData {
 			throw new Error(response.message || 'Tunnel creation failing');
 		}
 
+		this.lokal.logDebug('Duplicate flag', this.ignoreDuplicateFlag);
+		this.lokal.logDebug('API response', response.message);
+
 		if (!response.success) {
 			if (this.ignoreDuplicateFlag && response.message.endsWith('address is already being used')) {
+				this.lokal.logDebug('running ignore duplicate');
 				this.address_public = response.data[0].address_public;
 				this.address_mdns = response.data[0].address_mdns;
 				this.id = response.data[0].id;
