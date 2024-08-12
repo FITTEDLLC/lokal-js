@@ -140,10 +140,6 @@ class Lokal {
 		const data = await response.json();
 		this.logDebug('Response:', data);
 
-		if (!response.ok) {
-			throw new Error(data.message || 'An error occurred');
-		}
-
 		return data;
 	}
 
