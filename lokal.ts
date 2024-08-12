@@ -35,12 +35,14 @@ class Lokal {
 	private basicAuth: { username: string; password: string } | null;
 	private token: string | null;
 	private debug: boolean;
+	private skip_tls: boolean;
 
 	constructor(baseURL: string = 'http://127.0.0.1:6174') {
 		this.baseURL = baseURL;
 		this.basicAuth = null;
 		this.token = null;
 		this.debug = false;
+		this.skip_tls = false;
 	}
 
 	setBaseURL(url: string): Lokal {
@@ -56,7 +58,14 @@ class Lokal {
 	}
 
 	skipTLSVerify(): Lokal {
-		process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+		try {
+			process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+			console.warn(
+				'it is recommended to use env NODE_EXTRA_CA_CERTS=cert.crt,cert2.pem instead of skip TLS verify'
+			);
+		} catch {
+			console.warn('process.env not available, skipping...');
+		}
 		return this;
 	}
 
