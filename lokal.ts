@@ -198,6 +198,16 @@ class Tunnel implements TunnelData {
 		const response = await this.lokal.request('/api/tunnel/start', 'POST', this);
 
 		if (!response.success || response.data.length === 0) {
+			if (this.ignoreDuplicateFlag && response.message.endsWith('address is already being used')) {
+				this.address_public = response.data[0].address_public;
+				this.address_mdns = response.data[0].address_mdns;
+				this.id = response.data[0].id;
+
+				if (this.startupBannerFlag) {
+					this.showBanner();
+				}
+				return this;
+			}
 			throw new Error(response.message || 'Tunnel creation failing');
 		}
 
