@@ -46,6 +46,9 @@ class Lokal {
 	}
 
 	setBaseURL(url: string): Lokal {
+		if (url.endsWith("/")) {
+			url = url.slice(0, -1);
+		}
 		this.baseURL = url;
 		this.logDebug('Base URL set to:', url);
 		return this;
