@@ -32,81 +32,103 @@ interface TunnelData {
 
 class Lokal {
 	private baseURL: string;
-	private basicAuth: { username: string; password: string } | null;
-	private token: string | null;
+    private basicAuth: { username: string; password: string } | null;
+    private token: string | null;
+    private debug: boolean;
 
-	constructor(baseURL: string = 'http://127.0.0.1:6174') {
-		this.baseURL = baseURL;
-		this.basicAuth = null;
-		this.token = null;
-	}
+    constructor(baseURL: string = 'http://127.0.0.1:6174') {
+        this.baseURL = baseURL;
+        this.basicAuth = null;
+        this.token = null;
+        this.debug = false;
+    }
 
-	setBaseURL(url: string): Lokal {
-		this.baseURL = url;
-		return this;
-	}
+    setBaseURL(url: string): Lokal {
+        this.baseURL = url;
+        this.logDebug('Base URL set to:', url);
+        return this;
+    }
 
-	setBasicAuth(username: string, password: string): Lokal {
-		this.basicAuth = { username, password };
-		return this;
-	}
+    setBasicAuth(username: string, password: string): Lokal {
+        this.basicAuth = { username, password };
+        this.logDebug('Basic auth set');
+        return this;
+    }
 
-	setAPIToken(token: string): Lokal {
-		this.token = token;
-		return this;
-	}
+    setAPIToken(token: string): Lokal {
+        this.token = token;
+        this.logDebug('API token set');
+        return this;
+    }
 
-	async request(endpoint: string, method: string = 'GET', body: any = null): Promise<any> {
-		const headers: HeadersInit = {
-			'User-Agent': 'Lokal TS - github.com/lokal-so/lokal-ts',
-			'Content-Type': 'application/json'
-		};
+    debugMode(enable: boolean): Lokal {
+        this.debug = enable;
+        this.logDebug(`Debug mode ${enable ? 'enabled' : 'disabled'}`);
+        return this;
+    }
 
-		if (this.token) {
-			headers['X-Auth-Token'] = this.token;
-		}
+    private logDebug(...args: any[]): void {
+        if (this.debug) {
+            console.log(clc.yellow('[DEBUG]'), ...args);
+        }
+    }
 
-		const options: RequestInit = {
-			method,
-			headers
-		};
+    async request(endpoint: string, method: string = 'GET', body: any = null): Promise<any> {
+        const headers: HeadersInit = {
+            'User-Agent': 'Lokal TS - github.com/lokal-so/lokal-ts',
+            'Content-Type': 'application/json'
+        };
 
-		if (this.basicAuth) {
-			const auth = btoa(`${this.basicAuth.username}:${this.basicAuth.password}`);
-			headers['Authorization'] = `Basic ${auth}`;
-		}
+        if (this.token) {
+            headers['X-Auth-Token'] = this.token;
+        }
 
-		if (body) {
-			options.body = JSON.stringify(body);
-		}
+        const options: RequestInit = {
+            method,
+            headers
+        };
 
-		let response;
-		try {
-			response = await fetch(`${this.baseURL}${endpoint}`, options);
-		} catch (error: unknown) {
-			if (error instanceof Error) {
-				console.error(
-					'No Lokal client running, you may need to install Lokal Client, download at https://lokal.so/download',
-					error.message
-				);
-			}
-			return;
-		}
+        if (this.basicAuth) {
+            const auth = btoa(`${this.basicAuth.username}:${this.basicAuth.password}`);
+            headers['Authorization'] = `Basic ${auth}`;
+        }
 
-		const serverVersion = response.headers.get('Lokal-Server-Version');
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
 
-		if (!serverVersion || !this.isValidVersion(serverVersion)) {
-			throw new Error('Your local client might be outdated, please update');
-		}
+        this.logDebug('Request:', { endpoint, method, headers, body });
 
-		const data = await response.json();
+        let response;
+        try {
+            response = await fetch(`${this.baseURL}${endpoint}`, options);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                console.error(
+                    'No Lokal client running, you may need to install Lokal Client, download at https://lokal.so/download',
+                    error.message
+                );
+            }
+            this.logDebug('Request failed:', error);
+            return;
+        }
 
-		if (!response.ok) {
-			throw new Error(data.message || 'An error occurred');
-		}
+        const serverVersion = response.headers.get('Lokal-Server-Version');
+        this.logDebug('Server version:', serverVersion);
 
-		return data;
-	}
+        if (!serverVersion || !this.isValidVersion(serverVersion)) {
+            throw new Error('Your local client might be outdated, please update');
+        }
+
+        const data = await response.json();
+        this.logDebug('Response:', data);
+
+        if (!response.ok) {
+            throw new Error(data.message || 'An error occurred');
+        }
+
+        return data;
+    }
 
 	private isValidVersion(version: string): boolean {
 		const [major, minor, patch] = version.split('.').map(Number);
@@ -196,8 +218,11 @@ class Tunnel implements TunnelData {
 		}
 
 		const response = await this.lokal.request('/api/tunnel/start', 'POST', this);
+		if (response.data.length === 0) {
+			throw new Error(response.message || 'Tunnel creation failing');
+		}
 
-		if (!response.success || response.data.length === 0) {
+		if (!response.success) {
 			if (this.ignoreDuplicateFlag && response.message.endsWith('address is already being used')) {
 				this.address_public = response.data[0].address_public;
 				this.address_mdns = response.data[0].address_mdns;
