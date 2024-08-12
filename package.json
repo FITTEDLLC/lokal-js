@@ -1,6 +1,6 @@
 {
   "name": "lokal-js",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Library for interacting with Lokal.so Client REST API",
   "type": "module",
   "main": "dist/lokal.js",
@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "tsc",
     "build": "tsc",
-		"format": "prettier --write .",
+    "format": "prettier --write .",
     "prepublishOnly": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
